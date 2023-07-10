@@ -7,6 +7,10 @@ def move_motif(M, x, y, θ):
     R = np.array([[np.cos(θ), -np.sin(θ), x], [np.sin(θ), np.cos(θ), y]])
     return(R @ M2)
 
+def sawtooth(x):
+    # pour gérer les diffrences d'angle
+    return (x+np.pi) % (2*np.pi)-np.pi   # or equivalently   2*arctan(tan(x/2))
+
 def draw_car(ax, state):
     x, y, theta = state.flatten()
     M = np.array([[-0.5, 0.5, 0, -0.5], [0, 0, 1, 0]]) # motif du robot triangle
@@ -30,20 +34,33 @@ def evol(etat, input):
                        [input]])
     return d_etat
 
-def plot(ax, etat):
-    ax.cla()
+def plot(ax, etat, point_a_atteindre):
+    ax.cla()  # efface les dessins précédents
     ax.set_xlim(-10, 10)
     ax.set_ylim(-10, 10)
     ax.grid()
-    
-    draw_car(ax, etat)
+    draw_car(ax, etat) # dessine le robot
+    ax.plot(point_a_atteindre[0, 0], point_a_atteindre[1, 0], 'ro') # dessine le point à atteindre
 
+def suivre_un_cap(point_a_atteindre, etat):
+    """
+    Fonction qui permet de faire suivre un cap au robot pour rejoindre un point
+    """
+    x, y, theta = etat.flatten()
+    x_a, y_a = point_a_atteindre.flatten()
+    #calcul de l'angle à suivre
+    theta_a = np.arctan2(y_a - y, x_a - x) # angle à suivre pour aller vers le point
+    # calcul de l'erreur
+    e = sawtooth(theta_a - theta) # on calcul l'erreur entre l'angle à suivre et l'angle du robot
+   
+    # calcul de la vitesse de rotation (l'input u du robot)
+    u = 0.5 * e
 
-
-
+    return u
 
 if __name__ == "__main__":
     etat = np.array([[0], [0], [np.pi/3]])  # position x, y et la direction theta
+    point_a_atteindre = np.array([[5], [5]]) # point à atteindre
 
     temps_simulation = 100  # 100s
     dt = 0.1  # pas pour l'integration
@@ -58,17 +75,17 @@ if __name__ == "__main__":
     ax.set_title('Robot')
 
     t = 0
-    while t < temps_simulation :
-        # on fait une mesure par exemple une mesure de distance avec un point
-        
-        # on calcul u pour la vitesse de rotation
-        u = 0
+    while t < temps_simulation :        
+        # on calcule u pour la vitesse de rotation
+        u = 0.5 # vitesse de rotation du robot
+        # u = suivre_un_cap(point_a_atteindre, etat) # on fait suivre un cap au robot pour aller vers le point (5, 5)
+       
         # on intègre l'état du robot
         etat = etat + dt * evol(etat, u)
 
         #on affiche le robot
-        plot(ax, etat)
+        plot(ax, etat, point_a_atteindre)
 
         fig.canvas.draw()  # obligé pour l'affichage 
-        plt.pause(dt)  # obligé pour l'affichage, tu peux mettre moins pour faire tourner la boucle plus vite
-
+        plt.pause(0.001)  # obligé pour l'affichage, tu peux mettre dt pour faire un simulation en temps reel 
+        t = t + dt
